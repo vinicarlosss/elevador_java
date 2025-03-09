@@ -2,12 +2,16 @@ package br.ufrpe.simulador.simulador.elevadores.ui;
 
 import br.ufrpe.simulador.simulador.elevadores.modelo.Elevador;
 import br.ufrpe.simulador.simulador.elevadores.modelo.Passageiro;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 public class ElevadorApp extends Application {
 
@@ -51,8 +55,29 @@ public class ElevadorApp extends Application {
         stage.setScene(scene);
         stage.show();
 
-        // Inicia o processo de movimentação do elevador em uma thread separada
-        new Thread(() -> moverElevador()).start();
+        // Inicia a animação para movimentação do elevador
+        iniciarMovimentacaoElevador();
+    }
+
+    private void iniciarMovimentacaoElevador() {
+        // Timeline para movimentação do elevador
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            if (!elevador.getPassageirosNoElevador().isEmpty()) {
+                elevador.moverElevador();  // Move o elevador
+                atualizarAndarAtual();  // Atualiza o andar na interface gráfica
+            }
+        }));
+        timeline.setCycleCount(Timeline.INDEFINITE); // Animação contínua
+        timeline.play();
+    }
+
+    // Método para atualizar a posição do elevador e a exibição do andar atual
+    private void atualizarAndarAtual() {
+        // Usando JavaFX para garantir que a atualização ocorra na thread de UI
+        Platform.runLater(() -> {
+            // Atualiza o texto da label com o novo andar do elevador
+            andarAtualLabel.setText("Andar Atual: " + elevador.getAndarAtual());
+        });
     }
 
     // Método para adicionar o passageiro e atualizar a lista
@@ -88,7 +113,7 @@ public class ElevadorApp extends Application {
 
             // Adiciona o comportamento para descer o passageiro
             descerButton.setOnAction(e -> {
-                if (passageiro.getAndarDestino() == elevador.getAndarAtual() || elevador.getAndarAtual() == passageiro.getAndarAtual()) {
+                if (passageiro.getAndarDestino() == elevador.getAndarAtual()) {
                     elevador.removerPassageiro(passageiro);
                     atualizarListaPassageiros();
                     System.out.println(passageiro.getNome() + " desceu no andar " + elevador.getAndarAtual());
@@ -100,38 +125,6 @@ public class ElevadorApp extends Application {
             passageiroItem.getChildren().addAll(nomeLabel, destinoLabel, descerButton);
             listaPassageiros.getChildren().add(passageiroItem);
         }
-    }
-
-    // Método para atualizar a posição do elevador e a exibição do andar atual
-    private void moverElevador() {
-        try {
-            while (true) {
-                // Verifica se há passageiros e move o elevador
-                if (!elevador.getPassageirosNoElevador().isEmpty()) {
-                    // O elevador sobe ou desce aleatoriamente para simular o movimento
-                    elevador.moverElevador();
-                    updateAndarAtual();  // Atualiza a interface com o andar atual
-                    Thread.sleep(1000); // Tempo de movimento
-                }
-
-                // Verifica se algum passageiro chegou no seu destino e permite descer
-                for (Passageiro passageiro : elevador.getPassageirosNoElevador()) {
-                    if (passageiro.getAndarDestino() == elevador.getAndarAtual()) {
-                        elevador.removerPassageiro(passageiro);
-                        System.out.println(passageiro.getNome() + " desceu no andar " + elevador.getAndarAtual());
-                        atualizarListaPassageiros();
-                    }
-                }
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // Método para atualizar a label do andar atual do elevador
-    private void updateAndarAtual() {
-        // Usando JavaFX para garantir que a atualização ocorra na thread de UI
-        javafx.application.Platform.runLater(() -> andarAtualLabel.setText("Andar Atual: " + elevador.getAndarAtual()));
     }
 
     // Método para exibir erros
