@@ -1,72 +1,76 @@
 package br.ufrpe.simulador.simulador.elevadores.modelo;
 
-import lombok.Data;
-
 import java.util.LinkedList;
 import java.util.Queue;
 
 
-public class Elevador extends Thread {
+public class Elevador {
     private String nome;
     private int andarAtual;
-    private Queue<Passageiro> filaDeEspera;
-    private boolean emMovimento;
+    private Queue<Passageiro> passageiros;
+    private int destinoAtual;
 
     public Elevador(String nome) {
         this.nome = nome;
-        this.andarAtual = 0; // Começa no térreo
-        this.filaDeEspera = new LinkedList<>();
-        this.emMovimento = false;
+        this.andarAtual = 0; // Começa no andar 0
+        this.passageiros = new LinkedList<>();
+        this.destinoAtual = -1; // -1 indica que não há destino definido
     }
 
-    public synchronized void solicitarElevador(Passageiro passageiro, int andarDestino) {
-        System.out.println(passageiro.getNome() + " solicitou " + nome + " para o andar " + andarDestino);
-        filaDeEspera.add(passageiro);
-        notify(); // Avisa o elevador que tem passageiro esperando
+    // Agora o método solicitaElevador recebe um Passageiro
+    public void solicitarElevador(Passageiro passageiro) {
+        // Adiciona o passageiro na lista de passageiros
+        passageiros.add(passageiro);
+        // Se o elevador não tem destino, define o destino do primeiro passageiro
+        if (destinoAtual == -1) {
+            destinoAtual = passageiro.getAndarDestino();
+        }
     }
 
-    @Override
-    public void run() {
-        while (true) {
-            synchronized (this) {
-                while (filaDeEspera.isEmpty()) {
-                    try {
-                        wait(); // Espera um passageiro chamar o elevador
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
+    public boolean temDestino() {
+        return destinoAtual != -1;
+    }
+
+    public void moverElevador() {
+        if (temDestino()) {
+            // Se o elevador está no andar correto, então ele pega o próximo passageiro
+            if (andarAtual < destinoAtual) {
+                andarAtual++; // Subindo
+            } else if (andarAtual > destinoAtual) {
+                andarAtual--; // Descendo
             }
 
-            Passageiro passageiro = filaDeEspera.poll();
-            int destino = passageiro.getAndarDestino();
-            moverPara(destino);
-            passageiro.entrarNoElevador(this);
+            // Quando o elevador chega ao destino
+            if (andarAtual == destinoAtual) {
+                System.out.println("Elevador chegou ao andar " + andarAtual);
+                // Remover passageiro do elevador ou atualizar o destino
+                if (!passageiros.isEmpty()) {
+                    Passageiro p = passageiros.poll();
+                    destinoAtual = p.getAndarDestino();
+                    System.out.println("Próximo destino: Andar " + destinoAtual);
+                } else {
+                    destinoAtual = -1; // Nenhum passageiro esperando
+                }
+            }
         }
-    }
-
-    private void moverPara(int destino) {
-        System.out.println(nome + " indo para o andar " + destino);
-        emMovimento = true;
-        try {
-            Thread.sleep(Math.abs(destino - andarAtual) * 1000); // 1 segundo por andar
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        andarAtual = destino;
-        emMovimento = false;
-        System.out.println(nome + " chegou ao andar " + andarAtual);
     }
 
     public int getAndarAtual() {
         return andarAtual;
     }
 
-    public Queue<Passageiro> getFilaDeEspera() {
-        return filaDeEspera;
-    }
-
     public String getNome() {
         return nome;
     }
+
+    public Queue<Passageiro> getPassageirosNoElevador() {
+        return passageiros;
+    }
+
+    // Método para remover um passageiro específico do elevador
+    public void removerPassageiro(Passageiro passageiro) {
+        // Remover passageiro pela instância (caso o passageiro tenha saído do elevador)
+        passageiros.remove(passageiro);
+    }
 }
+
