@@ -3,37 +3,32 @@ package br.ufrpe.simulador.simulador.elevadores.modelo;
 import java.util.Random;
 
 //michael
-public class Passageiro extends Thread {
-    private final int id;
-    private final int andarOrigem;
-    private final int andarDestino;
-    private final Elevador[] elevadores;
+public class Passageiro {
+    private String nome;
+    private int andarAtual;
+    private int andarDestino;
 
-    public Passageiro(int id, int totalAndares, Elevador[] elevadores) {
-        this.id = id;
-        Random rand = new Random();
-        this.andarOrigem = rand.nextInt(totalAndares); // Escolhe um andar aleatório
-        this.andarDestino = rand.nextInt(totalAndares);
-        this.elevadores = elevadores;
+    public Passageiro(String nome, int andarAtual, int andarDestino) {
+        this.nome = nome;
+        this.andarAtual = andarAtual;
+        this.andarDestino = andarDestino;
     }
 
-    @Override
-    public void run() {
-        System.out.println("Passageiro " + id + " está no andar " + andarOrigem + " e quer ir para " + andarDestino);
-        Elevador escolhido = escolherElevadorMaisProximo();
-        escolhido.moverPara(andarOrigem);
-        escolhido.moverPara(andarDestino);
-        System.out.println("Passageiro " + id + " chegou ao destino!");
+    public void solicitarElevador(Elevador elevador) {
+        elevador.solicitarElevador(this, andarDestino);
     }
 
-    private Elevador escolherElevadorMaisProximo() {
-        Elevador maisProximo = elevadores[0];
-        for (Elevador e : elevadores) {
-            if (Math.abs(e.getAndarAtual() - andarOrigem) < Math.abs(maisProximo.getAndarAtual() - andarOrigem)) {
-                maisProximo = e;
-            }
-        }
-        return maisProximo;
+    public void entrarNoElevador(Elevador elevador) {
+        System.out.println(nome + " entrou no " + elevador.getNome() + " e está indo para o andar " + andarDestino);
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public int getAndarDestino() {
+        return andarDestino;
     }
 }
+
 //michael

@@ -1,46 +1,72 @@
 package br.ufrpe.simulador.simulador.elevadores.modelo;
 
-import java.util.concurrent.Semaphore;
+import lombok.Data;
+
+import java.util.LinkedList;
+import java.util.Queue;
+
 
 public class Elevador extends Thread {
-    private final int id;
+    private String nome;
     private int andarAtual;
-    private final int capacidade;
-    private final Semaphore semaforo; // Controle de concorrência
+    private Queue<Passageiro> filaDeEspera;
+    private boolean emMovimento;
 
-    public Elevador(int id, int andarInicial, int capacidade, Semaphore semaforo) {
-        this.id = id;
-        this.andarAtual = andarInicial;
-        this.capacidade = capacidade;
-        this.semaforo = semaforo;
+    public Elevador(String nome) {
+        this.nome = nome;
+        this.andarAtual = 0; // Começa no térreo
+        this.filaDeEspera = new LinkedList<>();
+        this.emMovimento = false;
     }
 
-    public synchronized void moverPara(int andarDestino) {
-        System.out.println("Elevador " + id + " indo para o andar " + andarDestino);
-        try {
-            Thread.sleep(Math.abs(andarDestino - andarAtual) * 1000); // Simula tempo de deslocamento
-            andarAtual = andarDestino;
-            System.out.println("Elevador " + id + " chegou ao andar " + andarAtual);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+    public synchronized void solicitarElevador(Passageiro passageiro, int andarDestino) {
+        System.out.println(passageiro.getNome() + " solicitou " + nome + " para o andar " + andarDestino);
+        filaDeEspera.add(passageiro);
+        notify(); // Avisa o elevador que tem passageiro esperando
     }
 
     @Override
     public void run() {
         while (true) {
-            try {
-                semaforo.acquire(); // Aguarda permissão para operar
-                System.out.println("Elevador " + id + " está pronto para atender chamadas.");
-                Thread.sleep(2000); // Espera para receber uma chamada
-                semaforo.release(); // Libera para outro elevador
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            synchronized (this) {
+                while (filaDeEspera.isEmpty()) {
+                    try {
+                        wait(); // Espera um passageiro chamar o elevador
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
+
+            Passageiro passageiro = filaDeEspera.poll();
+            int destino = passageiro.getAndarDestino();
+            moverPara(destino);
+            passageiro.entrarNoElevador(this);
         }
+    }
+
+    private void moverPara(int destino) {
+        System.out.println(nome + " indo para o andar " + destino);
+        emMovimento = true;
+        try {
+            Thread.sleep(Math.abs(destino - andarAtual) * 1000); // 1 segundo por andar
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        andarAtual = destino;
+        emMovimento = false;
+        System.out.println(nome + " chegou ao andar " + andarAtual);
     }
 
     public int getAndarAtual() {
         return andarAtual;
+    }
+
+    public Queue<Passageiro> getFilaDeEspera() {
+        return filaDeEspera;
+    }
+
+    public String getNome() {
+        return nome;
     }
 }
