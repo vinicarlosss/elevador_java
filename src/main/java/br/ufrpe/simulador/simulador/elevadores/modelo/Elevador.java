@@ -3,7 +3,7 @@ package br.ufrpe.simulador.simulador.elevadores.modelo;
 import java.util.LinkedList;
 import java.util.Queue;
 
-
+//michael
 public class Elevador {
     private String nome;
     private int andarAtual;
@@ -74,3 +74,4 @@ public class Elevador {
     }
 }
 
+//michael
