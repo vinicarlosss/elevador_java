@@ -65,6 +65,7 @@ public class ElevadorApp extends Application {
             if (!elevador.getPassageirosNoElevador().isEmpty()) {
                 elevador.moverElevador();  // Move o elevador
                 atualizarAndarAtual();  // Atualiza o andar na interface gráfica
+                atualizarListaPassageiros();
             }
         }));
         timeline.setCycleCount(Timeline.INDEFINITE); // Animação contínua
@@ -87,7 +88,7 @@ public class ElevadorApp extends Application {
         if (!nome.isEmpty() && !andarDestinoTexto.isEmpty()) {
             try {
                 int andarDestino = Integer.parseInt(andarDestinoTexto);
-                Passageiro passageiro = new Passageiro(nome, 0, andarDestino);
+                Passageiro passageiro = new Passageiro(nome, elevador.getAndarAtual(), andarDestino);
                 elevador.solicitarElevador(passageiro);
                 atualizarListaPassageiros();
                 nomePassageiroField.clear();

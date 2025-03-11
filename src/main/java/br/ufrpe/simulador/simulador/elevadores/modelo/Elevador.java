@@ -1,6 +1,8 @@
 package br.ufrpe.simulador.simulador.elevadores.modelo;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 //michael
@@ -33,7 +35,7 @@ public class Elevador {
 
     public void moverElevador() {
         if (temDestino()) {
-            // Se o elevador está no andar correto, então ele pega o próximo passageiro
+            // Movimenta o elevador em direção ao destino
             if (andarAtual < destinoAtual) {
                 andarAtual++; // Subindo
             } else if (andarAtual > destinoAtual) {
@@ -43,10 +45,19 @@ public class Elevador {
             // Quando o elevador chega ao destino
             if (andarAtual == destinoAtual) {
                 System.out.println("Elevador chegou ao andar " + andarAtual);
-                // Remover passageiro do elevador ou atualizar o destino
+
+                // Remove passageiros que chegaram ao destino diretamente na lista
+                passageiros.removeIf(p -> {
+                    if (p.getAndarDestino() == andarAtual) {
+                        System.out.println(p.getNome() + " desceu no andar " + andarAtual);
+                        return true; // Remove da lista
+                    }
+                    return false; // Mantém na lista
+                });
+
+                // Atualiza o destino para o próximo passageiro, se houver
                 if (!passageiros.isEmpty()) {
-                    Passageiro p = passageiros.poll();
-                    destinoAtual = p.getAndarDestino();
+                    destinoAtual = passageiros.peek().getAndarDestino();
                     System.out.println("Próximo destino: Andar " + destinoAtual);
                 } else {
                     destinoAtual = -1; // Nenhum passageiro esperando
