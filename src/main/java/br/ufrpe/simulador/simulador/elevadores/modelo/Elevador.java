@@ -29,6 +29,8 @@ public class Elevador extends Thread {
             passageirosEsperando.add(passageiro);
             passageiros.add(passageiro);
             if (destinoAtual == -1) destinoAtual = passageiro.getAndarOrigem();
+            System.out.println(passageiro.getNome()+" solicitou o elevador no andar "+
+                    passageiro.getAndarOrigem()+ " até o andar "+passageiro.getAndarDestino());
         } finally {
             lock.unlock();
         }
@@ -38,6 +40,7 @@ public class Elevador extends Thread {
         lock.lock();
         try {
             passageiros.remove(passageiro);
+            System.out.println(passageiro.getNome()+" desceu no andar "+this.getAndarAtual());
         } finally {
             lock.unlock();
         }
@@ -47,7 +50,7 @@ public class Elevador extends Thread {
         while (true) {
             moverElevador();
             try {
-                Thread.sleep(1000);
+                Thread.sleep(3000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
@@ -65,8 +68,20 @@ public class Elevador extends Thread {
                 if (andarAtual < destinoAtual) andarAtual++;
                 else if (andarAtual > destinoAtual) andarAtual--;
                 else {
+                    // Remover passageiros esperando no andar atual
                     passageirosEsperando.removeIf(p -> p.getAndarOrigem() == andarAtual);
-                    passageiros.removeIf(p -> p.getAndarDestino() == andarAtual);
+
+                    // Remover passageiros dentro do elevador que chegaram ao seu destino
+                    passageiros.removeIf(p -> {
+                        if (p.getAndarDestino() == andarAtual) {
+                            // Exibir o nome do passageiro e o andar em que ele desceu
+                            System.out.println("Passageiro " + p.getNome() + " desceu no andar " + andarAtual);
+                            return true;  // Retorna true para remover o passageiro
+                        }
+                        return false;  // Retorna false para não remover o passageiro
+                    });
+
+                    // Atualizar o destino do elevador para o próximo destino, se houver passageiros
                     destinoAtual = passageiros.isEmpty() ? -1 : passageiros.peek().getAndarDestino();
                 }
             }

@@ -103,12 +103,8 @@ public class ElevadorApp extends Application {
                 Label destinoLabel = new Label("Destino: " + passageiro.getAndarDestino());
                 Button descerButton = new Button("Descer");
                 descerButton.setOnAction(e -> {
-                    if (passageiro.getAndarDestino() == elevador.getAndarAtual()) {
-                        elevador.removerPassageiro(passageiro);
-                        atualizarListaPassageiros();
-                    } else {
-                        mostrarErro("O elevador não está no andar do destino.");
-                    }
+                    elevador.removerPassageiro(passageiro);
+                    atualizarListaPassageiros();
                 });
                 passageiroItem.getChildren().addAll(nomeLabel, destinoLabel, descerButton);
                 listaPassageiros.getChildren().add(passageiroItem);
