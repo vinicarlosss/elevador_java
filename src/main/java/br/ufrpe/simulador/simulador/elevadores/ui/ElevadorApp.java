@@ -14,121 +14,115 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 public class ElevadorApp extends Application {
-
-    private Elevador elevador;
+    private Elevador elevador1, elevador2;
     private VBox listaPassageiros;
-    private TextField nomePassageiroField;
-    private TextField andarDestinoField;
-    private Label andarAtualLabel;
+    private TextField nomePassageiroField, andarOrigemField, andarDestinoField;
+    private Label andarElevador1Label, andarElevador2Label;
 
     @Override
     public void start(Stage stage) {
-        // Inicializa o elevador
-        elevador = new Elevador("Elevador 1");
+        elevador1 = new Elevador("Elevador A");
+        elevador2 = new Elevador("Elevador B");
 
-        // Cria a caixa de entrada para nome e destino
         nomePassageiroField = new TextField();
-        nomePassageiroField.setPromptText("Nome do Passageiro");
+        nomePassageiroField.setPromptText("Nome");
+
+        andarOrigemField = new TextField();
+        andarOrigemField.setPromptText("Andar Origem");
 
         andarDestinoField = new TextField();
-        andarDestinoField.setPromptText("Andar de Destino");
+        andarDestinoField.setPromptText("Andar Destino");
 
-        // Cria um botão para adicionar o passageiro
         Button adicionarPassageiroButton = new Button("Adicionar Passageiro");
         adicionarPassageiroButton.setOnAction(e -> adicionarPassageiro());
 
-        // Cria uma lista para mostrar os passageiros
         listaPassageiros = new VBox(10);
         listaPassageiros.setAlignment(Pos.TOP_LEFT);
+        andarElevador1Label = new Label("Elevador A - Andar Atual: 0");
+        andarElevador2Label = new Label("Elevador B - Andar Atual: 0");
 
-        // Exibe o andar atual do elevador
-        andarAtualLabel = new Label("Andar Atual: 0");
-
-        // Cria a VBox para os campos de entrada e a lista de passageiros
-        VBox root = new VBox(10, nomePassageiroField, andarDestinoField, adicionarPassageiroButton, listaPassageiros, andarAtualLabel);
+        VBox root = new VBox(10, nomePassageiroField, andarOrigemField, andarDestinoField,
+                adicionarPassageiroButton , andarElevador1Label, andarElevador2Label, listaPassageiros);
         root.setAlignment(Pos.TOP_CENTER);
         root.setStyle("-fx-padding: 20px; -fx-background-color: #f0f0f0;");
 
-        // Cria a cena e o palco
-        Scene scene = new Scene(root, 400, 400);
+        Scene scene = new Scene(root, 400, 500);
         stage.setTitle("Simulador de Elevadores");
         stage.setScene(scene);
         stage.show();
 
-        // Inicia a animação para movimentação do elevador
-        iniciarMovimentacaoElevador();
+        iniciarMovimentacaoElevadores();
     }
 
-    private void iniciarMovimentacaoElevador() {
-        // Timeline para movimentação do elevador
+    private void iniciarMovimentacaoElevadores() {
         Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-            if (!elevador.getPassageirosNoElevador().isEmpty()) {
-                elevador.moverElevador();  // Move o elevador
-                atualizarAndarAtual();  // Atualiza o andar na interface gráfica
-                atualizarListaPassageiros();
-            }
+            elevador1.moverElevador();
+            elevador2.moverElevador();
+            atualizarInterface();
+            atualizarListaPassageiros();
         }));
-        timeline.setCycleCount(Timeline.INDEFINITE); // Animação contínua
+        timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
     }
 
-    // Método para atualizar a posição do elevador e a exibição do andar atual
-    private void atualizarAndarAtual() {
-        // Usando JavaFX para garantir que a atualização ocorra na thread de UI
+    private void adicionarPassageiro() {
+        String nome = nomePassageiroField.getText();
+        String andarOrigemTexto = andarOrigemField.getText();
+        String andarDestinoTexto = andarDestinoField.getText();
+
+        if (!nome.isEmpty() && !andarOrigemTexto.isEmpty() && !andarDestinoTexto.isEmpty()) {
+            try {
+                int andarOrigem = Integer.parseInt(andarOrigemTexto);
+                int andarDestino = Integer.parseInt(andarDestinoTexto);
+                Passageiro passageiro = new Passageiro(nome, andarOrigem, andarDestino);
+                escolherElevador(passageiro);
+                atualizarInterface();
+            } catch (NumberFormatException e) {
+                mostrarErro("Andares devem ser números válidos.");
+            }
+        } else {
+            mostrarErro("Preencha todos os campos.");
+        }
+    }
+
+    private void escolherElevador(Passageiro passageiro) {
+        int distanciaA = Math.abs(elevador1.getAndarAtual() - passageiro.getAndarOrigem());
+        int distanciaB = Math.abs(elevador2.getAndarAtual() - passageiro.getAndarOrigem());
+
+        if (distanciaA <= distanciaB) elevador1.solicitarElevador(passageiro);
+        else elevador2.solicitarElevador(passageiro);
+    }
+
+    private void atualizarListaPassageiros() {
+        listaPassageiros.getChildren().clear();
+        for (Elevador elevador : new Elevador[]{elevador1, elevador2}) {
+            for (Passageiro passageiro : elevador.getPassageirosNoElevador()) {
+                HBox passageiroItem = new HBox(10);
+                passageiroItem.setAlignment(Pos.CENTER_LEFT);
+                Label nomeLabel = new Label("Nome: " + passageiro.getNome());
+                Label destinoLabel = new Label("Destino: " + passageiro.getAndarDestino());
+                Button descerButton = new Button("Descer");
+                descerButton.setOnAction(e -> {
+                    if (passageiro.getAndarDestino() == elevador.getAndarAtual()) {
+                        elevador.removerPassageiro(passageiro);
+                        atualizarListaPassageiros();
+                    } else {
+                        mostrarErro("O elevador não está no andar do destino.");
+                    }
+                });
+                passageiroItem.getChildren().addAll(nomeLabel, destinoLabel, descerButton);
+                listaPassageiros.getChildren().add(passageiroItem);
+            }
+        }
+    }
+
+    private void atualizarInterface() {
         Platform.runLater(() -> {
-            // Atualiza o texto da label com o novo andar do elevador
-            andarAtualLabel.setText("Andar Atual: " + elevador.getAndarAtual());
+            andarElevador1Label.setText("Elevador A - Andar Atual: " + elevador1.getAndarAtual());
+            andarElevador2Label.setText("Elevador B - Andar Atual: " + elevador2.getAndarAtual());
         });
     }
 
-    // Método para adicionar o passageiro e atualizar a lista
-    private void adicionarPassageiro() {
-        String nome = nomePassageiroField.getText();
-        String andarDestinoTexto = andarDestinoField.getText();
-        if (!nome.isEmpty() && !andarDestinoTexto.isEmpty()) {
-            try {
-                int andarDestino = Integer.parseInt(andarDestinoTexto);
-                Passageiro passageiro = new Passageiro(nome, elevador.getAndarAtual(), andarDestino);
-                elevador.solicitarElevador(passageiro);
-                atualizarListaPassageiros();
-                nomePassageiroField.clear();
-                andarDestinoField.clear();
-            } catch (NumberFormatException e) {
-                mostrarErro("O andar de destino deve ser um número válido.");
-            }
-        } else {
-            mostrarErro("Por favor, preencha o nome e o andar de destino.");
-        }
-    }
-
-    // Método para atualizar a lista de passageiros na interface
-    private void atualizarListaPassageiros() {
-        listaPassageiros.getChildren().clear(); // Limpa a lista antiga
-
-        for (Passageiro passageiro : elevador.getPassageirosNoElevador()) {
-            HBox passageiroItem = new HBox(10);
-            passageiroItem.setAlignment(Pos.CENTER_LEFT);
-            Label nomeLabel = new Label("Nome: " + passageiro.getNome());
-            Label destinoLabel = new Label("Destino: " + passageiro.getAndarDestino());
-            Button descerButton = new Button("Descer");
-
-            // Adiciona o comportamento para descer o passageiro
-            descerButton.setOnAction(e -> {
-                if (passageiro.getAndarDestino() == elevador.getAndarAtual()) {
-                    elevador.removerPassageiro(passageiro);
-                    atualizarListaPassageiros();
-                    System.out.println(passageiro.getNome() + " desceu no andar " + elevador.getAndarAtual());
-                } else {
-                    mostrarErro("O elevador não está no andar do destino.");
-                }
-            });
-
-            passageiroItem.getChildren().addAll(nomeLabel, destinoLabel, descerButton);
-            listaPassageiros.getChildren().add(passageiroItem);
-        }
-    }
-
-    // Método para exibir erros
     private void mostrarErro(String mensagem) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Erro");
@@ -141,3 +135,4 @@ public class ElevadorApp extends Application {
         launch(args);
     }
 }
+
