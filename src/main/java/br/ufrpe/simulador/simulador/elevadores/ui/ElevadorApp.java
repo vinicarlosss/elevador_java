@@ -13,16 +13,66 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ElevadorApp extends Application {
-    private Elevador elevador1, elevador2;
+    private Stage primaryStage;
+    private Stage escolhaElevadoresStage;
+    private List<Elevador> elevadores;
     private VBox listaPassageiros;
     private TextField nomePassageiroField, andarOrigemField, andarDestinoField;
-    private Label andarElevador1Label, andarElevador2Label;
+    private List<Label> andarElevadorLabels;
 
     @Override
-    public void start(Stage stage) {
-        elevador1 = new Elevador("Elevador A");
-        elevador2 = new Elevador("Elevador B");
+    public void start(Stage primaryStage) {
+        this.primaryStage = primaryStage;  // Armazena o valor de primaryStage na variável de instância
+
+        // Janela para perguntar o número de elevadores
+        escolhaElevadoresStage = new Stage();  // Agora a variável é visível em toda a classe
+        escolhaElevadoresStage.setTitle("Escolha a Quantidade de Elevadores");
+
+        TextField numeroElevadoresField = new TextField();
+        numeroElevadoresField.setPromptText("Quantos elevadores você quer simular?");
+
+        Button iniciarSimuladorButton = new Button("Iniciar Simulador");
+        iniciarSimuladorButton.setOnAction(e -> {
+            try {
+                int numeroElevadores = Integer.parseInt(numeroElevadoresField.getText());
+                if (numeroElevadores < 1) {
+                    mostrarErro("O número de elevadores deve ser maior que 0.");
+                } else {
+                    // Fechar a janela de escolha e iniciar o simulador
+                    escolhaElevadoresStage.close();  // Agora funciona corretamente
+                    iniciarSimulador(numeroElevadores);
+                    primaryStage.show();  // Agora é possível usar o primaryStage aqui
+                }
+            } catch (NumberFormatException ex) {
+                mostrarErro("Por favor, insira um número válido.");
+            }
+        });
+
+        VBox escolhaElevadoresLayout = new VBox(10, numeroElevadoresField, iniciarSimuladorButton);
+        escolhaElevadoresLayout.setAlignment(Pos.CENTER);
+        Scene escolhaElevadoresScene = new Scene(escolhaElevadoresLayout, 300, 150);
+        escolhaElevadoresStage.setScene(escolhaElevadoresScene);
+        escolhaElevadoresStage.show();
+    }
+
+    private void iniciarSimulador(int numeroElevadores) {
+        elevadores = new ArrayList<>();
+        andarElevadorLabels = new ArrayList<>();
+        listaPassageiros = new VBox(10);
+        listaPassageiros.setAlignment(Pos.TOP_LEFT);
+
+        // Criar os elevadores
+        for (int i = 1; i <= numeroElevadores; i++) {
+            Elevador elevador = new Elevador("Elevador " + (char) ('A' + i - 1));
+            elevadores.add(elevador);
+
+            Label label = new Label(elevador.getNome() + " - Andar Atual: 0");
+            andarElevadorLabels.add(label);
+        }
 
         nomePassageiroField = new TextField();
         nomePassageiroField.setPromptText("Nome");
@@ -36,28 +86,37 @@ public class ElevadorApp extends Application {
         Button adicionarPassageiroButton = new Button("Adicionar Passageiro");
         adicionarPassageiroButton.setOnAction(e -> adicionarPassageiro());
 
-        listaPassageiros = new VBox(10);
-        listaPassageiros.setAlignment(Pos.TOP_LEFT);
-        andarElevador1Label = new Label("Elevador A - Andar Atual: 0");
-        andarElevador2Label = new Label("Elevador B - Andar Atual: 0");
-
         VBox root = new VBox(10, nomePassageiroField, andarOrigemField, andarDestinoField,
-                adicionarPassageiroButton , andarElevador1Label, andarElevador2Label, listaPassageiros);
+                adicionarPassageiroButton, listaPassageiros);
         root.setAlignment(Pos.TOP_CENTER);
         root.setStyle("-fx-padding: 20px; -fx-background-color: #f0f0f0;");
 
-        Scene scene = new Scene(root, 400, 500);
-        stage.setTitle("Simulador de Elevadores");
-        stage.setScene(scene);
-        stage.show();
+        // Criar um layout para mostrar o status de todos os elevadores
+        VBox statusElevadores = new VBox(10);
+        for (Label label : andarElevadorLabels) {
+            statusElevadores.getChildren().add(label);
+        }
 
+        VBox mainLayout = new VBox(10, root, statusElevadores);
+        Scene mainScene = new Scene(mainLayout, 400, 500);
+
+        // Use o primaryStage para a janela de simulação
+        primaryStage.setTitle("Simulador de Elevadores");
+        primaryStage.setScene(mainScene);
+
+        // Atualizar a movimentação dos elevadores
         iniciarMovimentacaoElevadores();
+
+        // Fechar a janela de escolha de elevadores e exibir a janela principal
+        escolhaElevadoresStage.close();
+        primaryStage.show();  // Exibe a janela principal (simulação)
     }
 
     private void iniciarMovimentacaoElevadores() {
         Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-            elevador1.moverElevador();
-            elevador2.moverElevador();
+            for (Elevador elevador : elevadores) {
+                elevador.moverElevador();
+            }
             atualizarInterface();
             atualizarListaPassageiros();
         }));
@@ -86,16 +145,16 @@ public class ElevadorApp extends Application {
     }
 
     private void escolherElevador(Passageiro passageiro) {
-        int distanciaA = Math.abs(elevador1.getAndarAtual() - passageiro.getAndarOrigem());
-        int distanciaB = Math.abs(elevador2.getAndarAtual() - passageiro.getAndarOrigem());
+        int distanciaA = Math.abs(elevadores.get(0).getAndarAtual() - passageiro.getAndarOrigem());
+        int distanciaB = Math.abs(elevadores.get(1).getAndarAtual() - passageiro.getAndarOrigem());
 
-        if (distanciaA <= distanciaB) elevador1.solicitarElevador(passageiro);
-        else elevador2.solicitarElevador(passageiro);
+        if (distanciaA <= distanciaB) elevadores.get(0).solicitarElevador(passageiro);
+        else elevadores.get(1).solicitarElevador(passageiro);
     }
 
     private void atualizarListaPassageiros() {
         listaPassageiros.getChildren().clear();
-        for (Elevador elevador : new Elevador[]{elevador1, elevador2}) {
+        for (Elevador elevador : elevadores) {
             for (Passageiro passageiro : elevador.getPassageirosNoElevador()) {
                 HBox passageiroItem = new HBox(10);
                 passageiroItem.setAlignment(Pos.CENTER_LEFT);
@@ -114,8 +173,9 @@ public class ElevadorApp extends Application {
 
     private void atualizarInterface() {
         Platform.runLater(() -> {
-            andarElevador1Label.setText("Elevador A - Andar Atual: " + elevador1.getAndarAtual());
-            andarElevador2Label.setText("Elevador B - Andar Atual: " + elevador2.getAndarAtual());
+            for (int i = 0; i < elevadores.size(); i++) {
+                andarElevadorLabels.get(i).setText(elevadores.get(i).getNome() + " - Andar Atual: " + elevadores.get(i).getAndarAtual());
+            }
         });
     }
 
@@ -131,4 +191,3 @@ public class ElevadorApp extends Application {
         launch(args);
     }
 }
-
