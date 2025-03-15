@@ -1,5 +1,7 @@
 package br.ufrpe.simulador.simulador.elevadores.ui;
 
+
+import br.ufrpe.simulador.simulador.elevadores.modelo.Direcao;
 import br.ufrpe.simulador.simulador.elevadores.modelo.Elevador;
 import br.ufrpe.simulador.simulador.elevadores.modelo.Passageiro;
 import javafx.animation.KeyFrame;
@@ -33,7 +35,8 @@ public class ElevadorApp extends Application {
         escolhaElevadoresStage.setTitle("Escolha a Quantidade de Elevadores");
 
         TextField numeroElevadoresField = new TextField();
-        numeroElevadoresField.setPromptText("Quantos elevadores você quer simular?");
+        Label label = new Label("Quantos elevadores você quer simular?");
+        numeroElevadoresField.setTooltip(new Tooltip("Número de Elevadores"));
 
         Button iniciarSimuladorButton = new Button("Iniciar Simulador");
         iniciarSimuladorButton.setOnAction(e -> {
@@ -52,7 +55,7 @@ public class ElevadorApp extends Application {
             }
         });
 
-        VBox escolhaElevadoresLayout = new VBox(10, numeroElevadoresField, iniciarSimuladorButton);
+        VBox escolhaElevadoresLayout = new VBox(10, label, numeroElevadoresField, iniciarSimuladorButton);
         escolhaElevadoresLayout.setAlignment(Pos.CENTER);
         Scene escolhaElevadoresScene = new Scene(escolhaElevadoresLayout, 300, 150);
         escolhaElevadoresStage.setScene(escolhaElevadoresScene);
@@ -65,6 +68,10 @@ public class ElevadorApp extends Application {
         listaPassageiros = new VBox(10);
         listaPassageiros.setAlignment(Pos.TOP_LEFT);
 
+        ScrollPane scrollPane = new ScrollPane(listaPassageiros);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(150);
+
         // Criar os elevadores
         for (int i = 1; i <= numeroElevadores; i++) {
             Elevador elevador = new Elevador("Elevador " + (char) ('A' + i - 1));
@@ -74,20 +81,23 @@ public class ElevadorApp extends Application {
             andarElevadorLabels.add(label);
         }
 
+        Label nomeLabel = new Label("Nome do passageiro:");
         nomePassageiroField = new TextField();
         nomePassageiroField.setPromptText("Nome");
 
+        Label andarOrigemLabel = new Label("Andar de origem do passageiro:");
         andarOrigemField = new TextField();
         andarOrigemField.setPromptText("Andar Origem");
 
+        Label andarDestinoLabel = new Label("Andar de destino do passageiro:");
         andarDestinoField = new TextField();
         andarDestinoField.setPromptText("Andar Destino");
 
         Button adicionarPassageiroButton = new Button("Adicionar Passageiro");
         adicionarPassageiroButton.setOnAction(e -> adicionarPassageiro());
 
-        VBox root = new VBox(10, nomePassageiroField, andarOrigemField, andarDestinoField,
-                adicionarPassageiroButton, listaPassageiros);
+        VBox root = new VBox(10, nomeLabel, nomePassageiroField, andarOrigemLabel, andarOrigemField,
+                andarDestinoLabel, andarDestinoField, adicionarPassageiroButton, scrollPane);
         root.setAlignment(Pos.TOP_CENTER);
         root.setStyle("-fx-padding: 20px; -fx-background-color: #f0f0f0;");
 
@@ -145,11 +155,55 @@ public class ElevadorApp extends Application {
     }
 
     private void escolherElevador(Passageiro passageiro) {
-        int distanciaA = Math.abs(elevadores.get(0).getAndarAtual() - passageiro.getAndarOrigem());
-        int distanciaB = Math.abs(elevadores.get(1).getAndarAtual() - passageiro.getAndarOrigem());
+        Elevador melhorElevador = null;
+        int menorDistancia = Integer.MAX_VALUE;
 
-        if (distanciaA <= distanciaB) elevadores.get(0).solicitarElevador(passageiro);
-        else elevadores.get(1).solicitarElevador(passageiro);
+        // Verifica se há algum elevador parado (ou seja, destinoAtual == -1)
+        for (Elevador elevador : elevadores) {
+            if (elevador.getDestinoAtual() == -1) {
+                // Elevador está parado, então escolhe o mais próximo
+                int distancia = Math.abs(elevador.getAndarAtual() - passageiro.getAndarOrigem());
+                if (distancia < menorDistancia) {
+                    menorDistancia = distancia;
+                    melhorElevador = elevador;
+                }
+            }
+        }
+
+        // Caso não haja elevadores parados, escolhe o elevador que está na direção correta
+        if (melhorElevador == null) {
+            for (Elevador elevador : elevadores) {
+                if (elevador.getDirecao() == Direcao.PARADO) {
+                    // Elevador está parado, pode ser escolhido
+                    int distancia = Math.abs(elevador.getAndarAtual() - passageiro.getAndarOrigem());
+                    if (distancia < menorDistancia) {
+                        menorDistancia = distancia;
+                        melhorElevador = elevador;
+                    }
+                } else if (elevador.getDirecao() == Direcao.SUBINDO && elevador.getAndarAtual() < passageiro.getAndarOrigem()) {
+                    // Elevador subindo, verifica se está subindo em direção ao andar de origem do passageiro
+                    int distancia = Math.abs(elevador.getAndarAtual() - passageiro.getAndarOrigem());
+                    if (distancia < menorDistancia) {
+                        menorDistancia = distancia;
+                        melhorElevador = elevador;
+                    }
+                } else if (elevador.getDirecao() == Direcao.DESCENDO && elevador.getAndarAtual() > passageiro.getAndarOrigem()) {
+                    // Elevador descendo, verifica se está descendo em direção ao andar de origem do passageiro
+                    int distancia = Math.abs(elevador.getAndarAtual() - passageiro.getAndarOrigem());
+                    if (distancia < menorDistancia) {
+                        menorDistancia = distancia;
+                        melhorElevador = elevador;
+                    }
+                }
+            }
+        }
+
+        // Solicita o elevador escolhido
+        if (melhorElevador != null) {
+            melhorElevador.solicitarElevador(passageiro);
+        } else {
+            System.out.println("Nenhum elevador disponível para atender à solicitação.");
+        }
     }
 
     private void atualizarListaPassageiros() {
@@ -160,12 +214,13 @@ public class ElevadorApp extends Application {
                 passageiroItem.setAlignment(Pos.CENTER_LEFT);
                 Label nomeLabel = new Label("Nome: " + passageiro.getNome());
                 Label destinoLabel = new Label("Destino: " + passageiro.getAndarDestino());
+                Label elevadorEmbarcado = new Label("Embarcou no: " + elevador.getNome());
                 Button descerButton = new Button("Descer");
                 descerButton.setOnAction(e -> {
                     elevador.removerPassageiro(passageiro);
                     atualizarListaPassageiros();
                 });
-                passageiroItem.getChildren().addAll(nomeLabel, destinoLabel, descerButton);
+                passageiroItem.getChildren().addAll(nomeLabel, destinoLabel, elevadorEmbarcado, descerButton);
                 listaPassageiros.getChildren().add(passageiroItem);
             }
         }
@@ -187,7 +242,4 @@ public class ElevadorApp extends Application {
         alert.showAndWait();
     }
 
-    public static void main(String[] args) {
-        launch(args);
-    }
 }
